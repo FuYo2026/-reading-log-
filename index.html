@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>読書・動画記録</title>
+<meta name="theme-color" content="#7a5c3e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root { --brown:#7a5c3e; --bg:#faf6f0; --card:#fff; --text:#333; --muted:#888; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Hiragino Sans", sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--brown); color:#fff; padding:16px; text-align:center; }
+  header h1 { margin:0; font-size:20px; }
+  main { max-width:640px; margin:0 auto; padding:16px; }
+  section { background:var(--card); border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  h2 { font-size:16px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, textarea, select { width:100%; padding:10px; font-size:16px; border:1px solid #ddd; border-radius:8px; }
+  textarea { min-height:80px; }
+  button { background:var(--brown); color:#fff; border:none; border-radius:8px; padding:12px 16px; font-size:15px; cursor:pointer; width:100%; margin-top:12px; }
+  button.sub { background:#fff; color:var(--brown); border:1px solid var(--brown); }
+  button.danger { background:#fff; color:#c0392b; border:1px solid #c0392b; }
+  #scanner { display:none; margin-top:12px; }
+  #scanner video { width:100%; border-radius:8px; background:#000; }
+  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  .book { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid #eee; cursor:pointer; }
+  .book:last-child { border-bottom:none; }
+  .book img { width:56px; height:80px; object-fit:cover; border-radius:4px; background:#eee; }
+  .book .no-cover { width:56px; height:80px; border-radius:4px; background:#e8ded2; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .book h3 { margin:0 0 4px; font-size:15px; }
+  .book p { margin:0; font-size:12px; color:var(--muted); }
+  .stars { color:#e6a817; }
+  .empty { text-align:center; color:var(--muted); padding:20px 0; }
+  .preview { text-align:center; margin-top:12px; }
+  .preview img { max-height:160px; border-radius:6px; }
+  .msg { font-size:13px; color:var(--brown); min-height:18px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header><h1>📚 読書・動画記録 🎬</h1></header>
+<main>
+  <section>
+    <h2>記録を追加する</h2>
+    <label>種類</label>
+    <select id="type">
+      <option value="book">📚 本</option>
+      <option value="video">🎬 動画</option>
+    </select>
+    <div id="bookFields">
+    <label>ISBN（本の裏のバーコードの番号）</label>
+    <div class="row">
+      <input id="isbn" inputmode="numeric" placeholder="9784...">
+    </div>
+    <button id="scanBtn">📷 バーコードを読み取る</button>
+    <div id="scanner">
+      <video id="video" playsinline muted></video>
+      <button class="sub" id="stopScanBtn">読み取りをやめる</button>
+    </div>
+    <button class="sub" id="lookupBtn">ISBNから本を探す</button>
+    <div class="preview" id="preview"></div>
+    <div class="msg" id="lookupMsg"></div>
+    </div>
+
+    <div id="videoFields" style="display:none">
+    <label>サービス</label>
+    <select id="service">
+      <option value="YouTube">YouTube</option>
+      <option value="Netflix">Netflix</option>
+      <option value="Amazon Prime Video">Amazon Prime Video</option>
+      <option value="Disney+">Disney+</option>
+      <option value="その他">その他</option>
+    </select>
+    <label>動画のURL（任意）</label>
+    <input id="url" type="url" placeholder="https://...">
+    <p style="font-size:12px;color:var(--muted)">YouTubeのURLを入れると、サムネイル画像を自動で表示します。その他のサービスは下の画像URLに好きな画像を入れられます（空でもOK）。</p>
+    <label>画像URL（任意）</label>
+    <input id="imageUrl" type="url" placeholder="https://...">
+    </div>
+
+    <label>タイトル</label>
+    <input id="title" placeholder="本や動画のタイトル">
+    <label id="authorLabel">著者</label>
+    <input id="author" placeholder="著者名／チャンネル名など">
+    <label>読んだ日・観た日</label>
+    <input id="date" type="date">
+    <label>評価</label>
+    <select id="rating">
+      <option value="0">評価なし</option>
+      <option value="1">★☆☆☆☆</option>
+      <option value="2">★★☆☆☆</option>
+      <option value="3">★★★☆☆</option>
+      <option value="4">★★★★☆</option>
+      <option value="5">★★★★★</option>
+    </select>
+    <label>感想・メモ</label>
+    <textarea id="note" placeholder="感想を書いてね"></textarea>
+    <input type="hidden" id="cover">
+    <input type="hidden" id="editId">
+    <button id="saveBtn">記録する</button>
+    <button class="sub" id="clearBtn">入力をクリア</button>
+  </section>
+
+  <section>
+    <h2>記録一覧（<span id="count">0</span>件）</h2>
+    <select id="filterType">
+      <option value="all">すべて</option>
+      <option value="book">📚 本だけ</option>
+      <option value="video">🎬 動画だけ</option>
+    </select>
+    <label>検索</label>
+    <input id="search" placeholder="タイトル・著者・チャンネル名で検索">
+    <div id="list"></div>
+  </section>
+
+  <section>
+    <h2>バックアップ</h2>
+    <p style="font-size:13px;color:var(--muted)">記録はこの端末の中に保存されます。ときどき書き出して保管してね。</p>
+    <button class="sub" id="exportBtn">記録を書き出す（JSON）</button>
+    <label>記録を読み込む（JSON）</label>
+    <input type="file" id="importFile" accept=".json,application/json">
+  </section>
+</main>
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
